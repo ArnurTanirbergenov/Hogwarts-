@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_USER=hogwarts
+      - DB_NAME=hogwarts
+      - DB_PASS=paSSword
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: hogwarts
+      POSTGRES_USER: hogwarts
+      POSTGRES_PASSWORD: paSSword
+    ports:
+      - "5433:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+volumes:
+  dbdata:
