@@ -80,6 +80,73 @@ func (app *application) showFacultyHandler(w http.ResponseWriter, r *http.Reques
 
 }
 
+func (app *application) showFacultyStudentHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+	faculty_id := id
+	// Call the Get() method to fetch the data for a specific movie. We also need to
+	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
+	// error, in which case we send a 404 Not Found response to the client.
+	faculty, err := app.models.Faculties.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	var input struct {
+		Name      string
+		Surname   string
+		StudyYear int
+		Age       int
+		FacultyId int
+		data.Filters
+	}
+	// Initialize a new Validator instance.
+	v := validator.New()
+
+	qs := r.URL.Query()
+
+	input.Name = app.readString(qs, "name", "")
+	input.Surname = app.readString(qs, "surname", "")
+	input.Age = app.readInt(qs, "age", 0, v)
+	input.FacultyId = app.readInt(qs, "faculty_id", int(faculty_id), v)
+	input.StudyYear = app.readInt(qs, "study_year", 0, v)
+
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	// Extract the sort query string value, falling back to "id" if it is not provided
+	// by the client (which will imply a ascending sort on movie ID).
+
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafelist = []string{"id", "name", "surname", "runtime", "study_year", "age", "faculty_id", "-id", "-name", "-surname", "-runtime", "-study_year", "-age", "-faculty_id"}
+
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// Call the GetAll() method to retrieve the movies, passing in the various filter
+	// parameters.
+	students, metadata, err := app.models.Students.GetAll(input.Name, input.Surname, input.Filters, input.StudyYear, input.Age, input.FacultyId)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// Send a JSON response containing the movie data.
+	err = app.writeJSON(w, http.StatusOK, envelope{"faculty": faculty, "students": students, "metadata": metadata}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+}
+
 func (app *application) updateFacultyHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract the movie ID from the URL.
 	id, err := app.readIDParam(r)

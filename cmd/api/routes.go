@@ -20,6 +20,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/faculties/:id", app.requirePermission("faculties:read", app.showFacultyHandler))
 	router.HandlerFunc(http.MethodPut, "/v1/faculties/:id", app.requirePermission("faculties:write", app.updateFacultyHandler))
 	router.HandlerFunc(http.MethodDelete, "/v1/faculties/:id", app.requirePermission("faculties:write", app.deleteFacultyHandler))
+	router.HandlerFunc(http.MethodGet, "/v1/faculties/:id/students", app.requirePermission("faculties:read", app.showFacultyStudentHandler))
 
 	router.HandlerFunc(http.MethodGet, "/v1/students", app.requirePermission("students:read", app.listStudentsHandler))
 	router.HandlerFunc(http.MethodPost, "/v1/students", app.requirePermission("students:write", app.createStudentHandler))
