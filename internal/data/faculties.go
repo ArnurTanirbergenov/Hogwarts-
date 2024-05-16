@@ -1,8 +1,10 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"arnur.second.try/internal/validator"
@@ -133,4 +135,52 @@ func (f FacultyModel) Delete(id int64) error {
 	}
 	return nil
 
+}
+
+func (f FacultyModel) GetAll(founder string, title string, year int, filters Filters) ([]*Faculty, error) {
+
+	query := fmt.Sprintf(`
+	SELECT id, founder, title, year, runtime,version
+	FROM faculties
+	WHERE  (to_tsvector('simple', founder) @@ plainto_tsquery('simple', $1) OR $1 = '')
+	AND  (to_tsvector('simple', title) @@ plainto_tsquery('simple', $2) OR $2 = '')
+	ORDER BY %s %s, id ASC
+	LIMIT $3 OFFSET $4`, filters.sortColumn(), filters.sortDirection())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := f.DB.QueryContext(ctx, query, founder, title, filters.limit(), filters.offset())
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	faculties := []*Faculty{}
+
+	for rows.Next() {
+
+		var faculty Faculty
+
+		err := rows.Scan(
+			&faculty.ID,
+			&faculty.Founder,
+			&faculty.Title,
+			&faculty.Year,
+			&faculty.Runtime,
+			&faculty.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		faculties = append(faculties, &faculty)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return faculties, nil
 }
